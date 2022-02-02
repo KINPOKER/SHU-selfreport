@@ -19,8 +19,10 @@ from PIL import Image, ImageDraw, ImageFont
 
 from login import login
 
-RETRY = 60
+RETRY = 5
 RETRY_TIMEOUT = 120
+NEED_BEFORE = True  # 如需补报则置为True，否则False
+START_DT = dt.datetime(2021, 11, 1)  # 需要补报的起始日期
 
 
 class element_has_value():
@@ -65,7 +67,7 @@ def get_time():
     return t
 
 
-def get_last_report(browser: webdriver.Chrome, t, days_ago):
+def get_last_report(browser: webdriver.Chrome, t):
     print('正在获取手机号...')
     browser.get('https://selfreport.shu.edu.cn/PersonInfo.aspx')
     time.sleep(1)
@@ -75,7 +77,7 @@ def get_last_report(browser: webdriver.Chrome, t, days_ago):
 
     print('正在获取前一天的填报信息...')
 
-    t = t - dt.timedelta(days=days_ago)
+    t = t - dt.timedelta(days=1)
     browser.get(f'https://selfreport.shu.edu.cn/ViewDayReport.aspx?day={t.year}-{t.month}-{t.day}')
     time.sleep(1)
 
@@ -322,7 +324,18 @@ if __name__ == "__main__":
             print(f'第{retry}次尝试填报')
 
             try:
-                infos = get_last_report(browser, now, retry + 1)
+                if NEED_BEFORE:
+                    t = START_DT
+                    while t < now:
+                        infos = get_last_report(browser, t)
+
+                        report_result = report_day(browser,
+                                                   *infos,
+                                                   t)
+
+                        t = t + dt.timedelta(days=1)
+
+                infos = get_last_report(browser, now)
 
                 report_result = report_day(browser,
                                            *infos,
