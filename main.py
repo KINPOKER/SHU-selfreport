@@ -19,8 +19,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from login import login
 
-
-RETRY = 5
+RETRY = 60
 RETRY_TIMEOUT = 120
 
 
@@ -29,7 +28,7 @@ class element_has_value():
         self.locator = locator
 
     def __call__(self, driver):
-        element = driver.find_element(*self.locator)   # Finding the referenced element
+        element = driver.find_element(*self.locator)  # Finding the referenced element
         if element.get_attribute('value') != '':
             return element
         else:
@@ -41,14 +40,14 @@ class element_has_no_value():
         self.locator = locator
 
     def __call__(self, driver):
-        element = driver.find_element(*self.locator)   # Finding the referenced element
+        element = driver.find_element(*self.locator)  # Finding the referenced element
         if element.get_attribute('value') == '':
             return element
         else:
             return False
 
 
-#获取东八区时间
+# 获取东八区时间
 def get_time():
     # 获取0时区时间，变换为东八区时间
     # 原因：运行程序的服务器所处时区不确定
@@ -66,7 +65,7 @@ def get_time():
     return t
 
 
-def get_last_report(browser: webdriver.Chrome, t):
+def get_last_report(browser: webdriver.Chrome, t, days_ago):
     print('正在获取手机号...')
     browser.get('https://selfreport.shu.edu.cn/PersonInfo.aspx')
     time.sleep(1)
@@ -76,7 +75,7 @@ def get_last_report(browser: webdriver.Chrome, t):
 
     print('正在获取前一天的填报信息...')
 
-    t = t - dt.timedelta(days=1)
+    t = t - dt.timedelta(days=days_ago)
     browser.get(f'https://selfreport.shu.edu.cn/ViewDayReport.aspx?day={t.year}-{t.month}-{t.day}')
     time.sleep(1)
 
@@ -323,7 +322,7 @@ if __name__ == "__main__":
             print(f'第{retry}次尝试填报')
 
             try:
-                infos = get_last_report(browser, now)
+                infos = get_last_report(browser, now, retry)
 
                 report_result = report_day(browser,
                                            *infos,
