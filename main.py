@@ -322,7 +322,7 @@ if __name__ == "__main__":
             print(f'第{retry}次尝试填报')
 
             try:
-                infos = get_last_report(browser, now, retry)
+                infos = get_last_report(browser, now, retry + 1)
 
                 report_result = report_day(browser,
                                            *infos,
