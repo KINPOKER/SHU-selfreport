@@ -14,6 +14,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -75,9 +76,14 @@ def get_last_report(browser: webdriver.Chrome, t):
     # 手机号
     ShouJHM = browser.find_element(By.ID, 'persinfo_ctl00_ShouJHM-inputEl').get_attribute('value')
 
-    print('正在获取{}-{}-{}前一天的填报信息...'.format(t.year, t.month, t.day))
-
     t = t - dt.timedelta(days=1)
+    if NEED_BEFORE:
+        print('开始补报，正在获取补报日期{}-{}-{}前一天的填报信息...'.format(t.year, t.month, t.day))
+        t = START_DT - dt.timedelta(days=1)
+    else:
+        print('正在获取前一天的填报信息...')
+        t = t - dt.timedelta(days=1)
+
     browser.get(f'https://selfreport.shu.edu.cn/ViewDayReport.aspx?day={t.year}-{t.month}-{t.day}')
     time.sleep(1)
 
@@ -115,6 +121,7 @@ def draw_XingCM(ShouJHM: str, t):
 def report_day(browser: webdriver.Chrome,
                ShouJHM, ShiFSH, ShiFZX, ddlSheng, ddlShi, ddlXian, XiangXDZ, ShiFZJ,
                t: dt.datetime):
+    print(f'正在填报{t.year}-{t.month}-{t.day}')
     browser.get(f'https://selfreport.shu.edu.cn/DayReport.aspx?day={t.year}-{t.month}-{t.day}')
     time.sleep(1)
 
@@ -226,16 +233,21 @@ def report_day(browser: webdriver.Chrome,
 
     # 确认提交
     browser.find_element(By.ID, 'p1_ctl02_btnSubmit').click()
-    time.sleep(1)
-    messagebox = browser.find_element(By.CLASS_NAME, 'f-messagebox')
+
+    messagebox = WebDriverWait(browser, 10).until(
+        EC.presence_of_element_located((By.CLASS_NAME, 'f-messagebox'))
+    )
 
     if '确定' in messagebox.text:
         for a in messagebox.find_elements(By.TAG_NAME, 'a'):
             if a.text == '确定':
                 a.click()
                 break
+        time.sleep(2)
 
-        messagebox = browser.find_element(By.CLASS_NAME, 'f-messagebox')
+        messagebox = WebDriverWait(browser, 10).until(
+            EC.presence_of_element_located((By.CLASS_NAME, 'f-messagebox'))
+        )
         if '提交成功' in messagebox.text:
             return True
         else:
@@ -277,7 +289,16 @@ if __name__ == "__main__":
         config = yaml.load(f, Loader=yaml.FullLoader)
 
     if 'users' in os.environ:
-        for user_password in os.environ['users'].split(';'):
+        os_users = os.environ['users'].split(';')
+        if len(sys.argv) == 2:
+            if sys.argv[1] == 'gh-vu':
+                print(os_users[0].split(',')[0])
+                exit(0)
+            elif sys.argv[1] == 'gh-vp':
+                print(os_users[0].split(',')[1])
+                exit(0)
+
+        for user_password in os_users:
             user, password = user_password.split(',')
             config[user] = {
                 'pwd': password
@@ -324,17 +345,18 @@ if __name__ == "__main__":
             print(f'第{retry}次尝试填报')
 
             try:
+                infos = get_last_report(browser, now)
                 if NEED_BEFORE:
                     t = START_DT
                     while t < now:
-                        infos = get_last_report(browser, t)
                         report_result = report_day(browser,
                                                    *infos,
                                                    t)
-
+                        if report_result:
+                            print(f'{now} 每日一报补报成功')
+                        else:
+                            print(f'{now} 每日一报补报失败')
                         t = t + dt.timedelta(days=1)
-
-                infos = get_last_report(browser, now)
                 report_result = report_day(browser,
                                            *infos,
                                            now)
