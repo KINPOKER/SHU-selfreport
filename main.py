@@ -22,8 +22,8 @@ from login import login
 
 RETRY = 5
 RETRY_TIMEOUT = 120
-NEED_BEFORE = False  # 如需补报则置为True，否则False
-START_DT = dt.datetime(2022, 2, 3)  # 需要补报的起始日期
+NEED_BEFORE = True  # 如需补报则置为True，否则False
+START_DT = dt.datetime(2022, 3, 11)  # 需要补报的起始日期
 
 
 class element_has_value():
